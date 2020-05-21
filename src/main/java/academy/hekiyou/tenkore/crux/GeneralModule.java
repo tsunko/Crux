@@ -50,7 +50,7 @@ public class GeneralModule {
             alias = "i",
             override = true
     )
-    public void give(Invoker invoker,
+    public void item(Invoker invoker,
                      @OptionalObject("self") HumanEntity target,
                      Material material,
                      @OptionalInteger(1) int amount,
@@ -103,6 +103,11 @@ public class GeneralModule {
                          GameMode gamemode){
         if(target == null)
             target = invoker.as(Player.class);
+        
+        if(gamemode == GameMode.SPECTATOR && !invoker.hasPermission("crux.general.gamemode.spectator")){
+            invoker.sendMessage(ChatColor.RED + "You cannot enter spectator mode.");
+            return;
+        }
         
         target.setGameMode(gamemode);
         
@@ -167,6 +172,7 @@ public class GeneralModule {
             if(time.chars().allMatch(Character::isDigit)){
                 ticks = Objects.requireNonNull(Interpreters.of(int.class)).apply(time);
             } else {
+                invoker.sendMessage(ChatColor.RED + "Couldn't determine a tick for \"" + time + "\"");
                 return;
             }
         }
@@ -352,9 +358,9 @@ public class GeneralModule {
             
             // use withLazyNumbers to prevent parsing the changedToAt field
             JsonArray names = JsonParser.array().withLazyNumbers().from(is);
-            
-            for(int i=0; i < names.size(); i++){
-                JsonObject entry = (JsonObject)names.get(i);
+    
+            for(Object name : names){
+                JsonObject entry = (JsonObject) name;
                 usernames.add(entry.get("name").toString());
             }
         } catch (MalformedURLException exc){
