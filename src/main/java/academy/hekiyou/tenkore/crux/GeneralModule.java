@@ -5,7 +5,6 @@ import academy.hekiyou.door.annotations.RegisterCommand;
 import academy.hekiyou.door.annotations.optional.OptionalBoolean;
 import academy.hekiyou.door.annotations.optional.OptionalInteger;
 import academy.hekiyou.door.annotations.optional.OptionalObject;
-import academy.hekiyou.door.annotations.optional.OptionalString;
 import academy.hekiyou.door.interp.Interpreters;
 import academy.hekiyou.door.model.Invoker;
 import com.grack.nanojson.*;
@@ -15,8 +14,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -24,7 +21,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -38,7 +34,7 @@ public class GeneralModule {
 
     private static final Map<String, Integer> TIME_REF_TO_TICKS = buildTimeMap();
     
-    private static ExecutorService THREAD_SERVICE = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    private static final ExecutorService THREAD_SERVICE = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     private static final String MC_PROFILE_URL = "https://api.mojang.com/profiles/minecraft";
     private static final String NAMES_URL_FMT = "https://api.mojang.com/user/profiles/%s/names";
     private static final int TIMEOUT = 3000;
@@ -54,28 +50,11 @@ public class GeneralModule {
                      @OptionalObject("self") HumanEntity target,
                      Material material,
                      @OptionalInteger(1) int amount,
-                     @OptionalString("") String json,
                      @OptionalBoolean(false) boolean drop){
         if(target == null)
             target = invoker.as(Player.class);
     
         ItemStack stack = new ItemStack(material, amount);
-
-        // test if no json was provided but we want to drop
-        if(json.equals("true")){
-            drop = true;
-        } else if(!json.isEmpty()){
-            try {
-                // we would use Bukkit's modifyItemStack function to do this,
-                // BUT: its implementation specifies a try-catch that just prints out to console
-                // thank you bukkit, very cool.
-                // Bukkit.getUnsafe().modifyItemStack(stack, json);
-                modifyItemStack(stack, json);
-            } catch (IllegalArgumentException exc){
-                invoker.sendMessage(ChatColor.RED + "Bad item JSON.");
-                return;
-            }
-        }
 
         if(drop){
             target.getWorld().dropItem(target.getLocation(), stack);
@@ -379,58 +358,6 @@ public class GeneralModule {
         }
         
         return usernames;
-    }
-    
-    // ugly reflection hack below
-    private static String nmsVersion;
-    private static Method CB_asNMSCopy;
-    private static Method CB_getItemMeta;
-    private static Method NMS_parse;
-    private static Method NMS_setTag;
-    
-    @NotNull
-    private static ItemStack modifyItemStack(ItemStack stack, String json){
-        try {
-            if(nmsVersion == null){
-                nmsVersion = Bukkit.getServer().getClass().getPackage().getName();
-                nmsVersion = nmsVersion.substring(nmsVersion.lastIndexOf('.') + 1);
-            }
-            if(CB_asNMSCopy == null){
-                CB_asNMSCopy = Class.forName("org.bukkit.craftbukkit." + nmsVersion + ".inventory.CraftItemStack")
-                        .getDeclaredMethod("asNMSCopy", ItemStack.class);
-                CB_asNMSCopy.setAccessible(true);
-            }
-            if(CB_getItemMeta == null){
-                CB_getItemMeta = Class.forName("org.bukkit.craftbukkit." + nmsVersion + ".inventory.CraftItemStack")
-                        .getDeclaredMethod("getItemMeta",
-                                Class.forName("net.minecraft.server." + nmsVersion + ".ItemStack"));
-                CB_getItemMeta.setAccessible(true);
-            }
-            if(NMS_parse == null){
-                NMS_parse = Class.forName("net.minecraft.server." + nmsVersion + ".MojangsonParser")
-                        .getDeclaredMethod("parse", String.class);
-                NMS_parse.setAccessible(true);
-            }
-            if(NMS_setTag == null){
-                NMS_setTag = Class.forName("net.minecraft.server." + nmsVersion + ".ItemStack")
-                        .getDeclaredMethod("setTag",
-                                Class.forName("net.minecraft.server." + nmsVersion + ".NBTTagCompound"));
-                NMS_setTag.setAccessible(true);
-            }
-            
-            Object nmsStack = CB_asNMSCopy.invoke(null, stack);
-            NMS_setTag.invoke(nmsStack, NMS_parse.invoke(null,json));
-            stack.setItemMeta((ItemMeta)CB_getItemMeta.invoke(null,nmsStack));
-            return stack;
-        } catch (ReflectiveOperationException exc){
-            throw new RuntimeException(exc);
-        } catch (Exception exc){
-            if(exc.getClass().getName().contains("MojangsonParseException")){
-                throw new IllegalArgumentException(exc);
-            } else {
-                throw new IllegalStateException(exc);
-            }
-        }
     }
 
 }

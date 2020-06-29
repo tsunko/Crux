@@ -22,10 +22,10 @@ import java.util.*;
 @Module
 public class Teleporting implements Listener {
     
-    private Map<UUID, Stack<BlockLocation>> history = new WeakHashMap<>();
+    private final Map<UUID, Stack<BlockLocation>> history = new WeakHashMap<>();
     // Map<target player, requesting player>
-    private Map<Player, Stack<Player>> requests = new WeakHashMap<>();
-    private Set<Player> returning = Collections.newSetFromMap(new WeakHashMap<>());
+    private final Map<Player, Stack<Player>> requests = new WeakHashMap<>();
+    private final Set<Player> returning = Collections.newSetFromMap(new WeakHashMap<>());
 
     @RegisterCommand(
             permission = "crux.teleporting.back",
@@ -177,7 +177,7 @@ public class Teleporting implements Listener {
     
     private static class BlockLocation {
         
-        private Location realLocation;
+        private final Location realLocation;
         
         BlockLocation(Location location){
             this.realLocation = location;
