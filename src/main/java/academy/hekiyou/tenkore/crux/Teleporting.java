@@ -194,7 +194,8 @@ public class Teleporting implements Listener {
             Location that = ((BlockLocation) o).getRealLocation();
             return realLocation.getBlockX() == that.getBlockX() &&
                    realLocation.getBlockY() == that.getBlockY() &&
-                   realLocation.getBlockZ() == that.getBlockZ();
+                   realLocation.getBlockZ() == that.getBlockZ() &&
+                   realLocation.getWorld() == that.getWorld();
         }
     
         @Override
